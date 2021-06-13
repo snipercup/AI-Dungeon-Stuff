@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Azgaar importer for AID</title>
+  </head>
+  <body>
+    <p>Import Azgaar data to AID</p>
+    
+    <TABLE border=1>
+      <TR>
+        <TD colspan=2>Cell geojson data</TD><TD>Burgs csv data</TD><TD rowspan=10 id="statesCheckBoxes">Enter<BR>the<BR>data</TD>
+      </TR>
+      <TR>
+        <TD colspan=2><textarea id="cellData" name="cellData" rows="4" cols="54"></textarea></TD>
+        <TD><textarea id="burgData" name="burgData" rows="4" cols="50"></textarea></TD>
+      </TR>
+      <TR>
+        <TD colspan=2>States csv data</TD><TD>Provinces csv data</TD>
+      </TR>
+      <TR>
+        <TD colspan=2><textarea id="statesData" name="statesData" rows="4" cols="54"></textarea></TD>
+        <TD><textarea id="provincesData" name="provincesData" rows="4" cols="50"></textarea></TD>
+      </TR>
+      <TR>
+        <TD>Biome csv data</TD><TD>Culture csv data</TD><TD>Religion csv data</TD>
+      </TR>
+      <TR>
+        <TD><textarea id="biomeData" name="biomeData" rows="4" cols="25"></textarea></TD>
+        <TD><textarea id="cultureData" name="cultureData" rows="4" cols="25"></textarea></TD>
+        <TD><textarea id="religionData" name="religionData" rows="4" cols="50"></textarea></TD>
+      </TR>
+      <TR>
+        <TD colspan=2>Controls</TD><TD>Debug Output</TD>
+      </TR>
+      <TR>
+        <TD colspan=2 rowspan=3>
+          <button type="button" onclick="processdata()">Process data</button><BR>
+          <button type="button" onclick="selectCells()">Convert cells</button>
+        </TD>
+        <TD><textarea id="outputData" name="outputData" rows="10" cols="50"></textarea></TD>
+      </TR>
+      <TR>
+        <TD>JSON Output</TD>
+      </TR>
+      <TR>
+        <TD><textarea id="outputJSONData" name="outputJSONData" rows="5" cols="50"></textarea></TD>
+      </TR>
+  </body>
+  <script src="https://unpkg.com/papaparse@latest/papaparse.min.js"></script>
+  
+  <script type="text/javascript">
+    function processdata() {
+      let jsonData = document.getElementById("cellData").value
+      let obj1 = JSON.parse(jsonData);
+      let outputDataString = "";
+      outputDataString += "jsonData.type = " + obj1.type + "\n";
+      outputDataString += "obj1.features.length = " + obj1.features.length + "\n";
+      const rndInt = Math.floor(Math.random() * obj1.features.length) + 1
+      let randomJsonObject = obj1.features[rndInt]
+      outputDataString += "randomJsonObject = " + randomJsonObject.properties.id + "\n";
+      let islandTypes = obj1.features.filter(island => island.properties.type == 'island');
+      outputDataString += "islandTypes.length = " + islandTypes.length + "\n";
+
+      let csv = document.getElementById("statesData").value
+      // Key data by field name instead of index/position
+      var results = Papa.parse(csv, {
+        header: true
+      });
+
+      let statesDataArray = results.data
+      outputDataString += "results.length = " + statesDataArray.length + "\n"; 
+      let i, stateVar;
+      let statesCheckHTML = "<div>"
+      for (i = 0; i < statesDataArray.length; i++) {
+        stateVar = statesDataArray[i]
+        if(stateVar["State"]){
+          statesCheckHTML += "<input type='checkbox' checked id='statebox" + stateVar["Id"] + "'/> " 
+          statesCheckHTML += "<span style='display:none' id='state" + stateVar["Id"] + "'>" + stateVar["Id"] + "</span>";
+          statesCheckHTML += "<label>" + stateVar["State"] + "</label><BR>"
+        }
+      } 
+      statesCheckHTML += "</div>"
+      
+      let statesCheckBoxesElement = document.getElementById("statesCheckBoxes")
+      statesCheckBoxesElement.innerHTML = statesCheckHTML;
+      
+      
+      //let stateCells = [];
+      //= islandTypes.filter(state => state.properties.state == 2);
+      //outputDataString += "stateCells.length = " + stateCells.length + "\n";
+      
+      
+      
+      document.getElementById("outputData").value = outputDataString;
+      
+      
+      
+      //STActors = actors.filter(actor => actor.show == 'Stranger Things');
+      //console.log(STActors);
+      return "";
+    }
+    
+    //Select all cells that have their state selected
+    function selectCells() {
+
+      let jsonData = document.getElementById("cellData").value
+      let obj1 = JSON.parse(jsonData);
+      let cellFeatures = obj1.features;
+      let islandTypes = cellFeatures.filter(island => island.properties.type == 'island');
+      let stateSelectedCells = [];
+      let stateInt = 0;
+      //let islandTypes = obj1.features.filter(island => island.properties.type == 'island');
+      let csv;
+      
+      csv = document.getElementById("statesData").value
+      if(csv == ""){
+        alert("Missing states data. Please add it.");
+        return;
+      };
+      // Key data by field name instead of index/position
+      var statesDataJSON = Papa.parse(csv, {
+        header: true, skipEmptyLines: true
+      });
+      let statesDataArray = statesDataJSON.data
+      
+      csv = document.getElementById("provincesData").value
+      if(csv == ""){
+        alert("Missing provinces data. Please add it.");
+        return;
+      };
+      // Key data by field name instead of index/position
+      var provincesDataJSON = Papa.parse(csv, {
+        header: true, skipEmptyLines: true
+      });
+      let provincesDataArray = provincesDataJSON.data
+      
+      csv = document.getElementById("cultureData").value
+      if(csv == ""){
+        alert("Missing culture data. Please add it.");
+        return;
+      };
+      // Key data by field name instead of index/position
+      var cultureDataJSON = Papa.parse(csv, {
+        header: true, skipEmptyLines: true
+      });
+      let cultureDataArray = cultureDataJSON.data
+      
+      csv = document.getElementById("religionData").value
+      if(csv == ""){
+        alert("Missing religion data. Please add it.");
+        return;
+      };
+      // Key data by field name instead of index/position
+      var religionDataJSON = Papa.parse(csv, {
+        header: true, skipEmptyLines: true
+      });
+      let religionDataArray = religionDataJSON.data
+      
+      csv = document.getElementById("biomeData").value
+      if(csv == ""){
+        alert("Missing biome data. Please add it.");
+        return;
+      };
+      // Key data by field name instead of index/position
+      var biomeDataJSON = Papa.parse(csv, {
+        header: true, skipEmptyLines: true
+      });
+      let biomeDataArray = biomeDataJSON.data
+      
+      csv = document.getElementById("burgData").value
+      if(csv == ""){
+        alert("Missing burg data. Please add it.");
+        return;
+      };
+      // Key data by field name instead of index/position
+      var burgDataJSON = Papa.parse(csv, {
+        header: true, skipEmptyLines: true
+      });
+      let burgDataArray = burgDataJSON.data
+
+      let i, stateVar;
+      let stateCells = [];
+      for (i = 0; i < statesDataArray.length; i++) {
+        stateVar = statesDataArray[i]
+        if(stateVar["Id"]){
+          if(document.getElementById("statebox" + stateVar["Id"]).checked){
+            stateInt = parseInt(stateVar["Id"]);
+            stateSelectedCells = islandTypes.filter(state => state.properties.state == stateInt);
+            stateCells = stateCells.concat(stateSelectedCells); 
+          }
+        }
+      }
+      
+      document.getElementById("outputData").value += "\nstateCells.length = " + stateCells.length;
+      
+      let jsonCell = {}, jsonCellList = [];
+      jsonCell.type = "worldDescription"
+      jsonCell.keys = ""
+      jsonCell.entry = ""
+      jsonCell.hidden = false;
+      jsonCell.generator = "Manual"
+      jsonCell.name = null
+      jsonCell.description = null
+      jsonCell.attributes = { "name": null, "description": null }
+      
+      let itemProvinceText, itemStateText, itemReligionText, itemCultureText, itemBiomeText;
+      let burgLatitude, burgLongtitude, cellCoordinates, cellLatitude, cellLongtitude, burgFound, foundBurg;
+      let filteredBurgData = [];
+      var keys = [];
+      
+      let selectedCell, selectedProperties;
+      for (i = 0; i < stateCells.length; i++) {
+        selectedCell = stateCells[i];
+        selectedProperties = selectedCell.properties;
+        cellCoordinates = selectedCell.geometry.coordinates;
+        itemProvinceText = numberToName(provincesDataArray, selectedProperties.province, "Province");
+        itemStateText = numberToName(statesDataArray, selectedProperties.state, "State");
+        itemReligionText = numberToName(religionDataArray, selectedProperties.religion, "Religion");
+        itemCultureText = numberToName(cultureDataArray, selectedProperties.culture, "Culture");
+        itemBiomeText = numberToName(biomeDataArray, selectedProperties.biome, "Biome");
+        document.getElementById("outputData").value += "\n\nitemProvinceText("+selectedProperties.id+") = " + itemProvinceText;
+        document.getElementById("outputData").value += "\nitemStateText = " + itemStateText;
+        document.getElementById("outputData").value += "\nitemReligionText = " + itemReligionText;
+        document.getElementById("outputData").value += "\nitemCultureText = " + itemCultureText;
+        document.getElementById("outputData").value += "\nitemBiomeText = " + itemBiomeText;
+
+        filteredBurgData = burgDataArray.filter(burg => burg.State.indexOf(itemStateText) > -1);
+        document.getElementById("outputData").value += "\nfilteredBurgData("+i+").length = " + filteredBurgData.length;
+        filteredBurgData = filteredBurgData.filter(burg => burg.Province.indexOf(itemProvinceText) > -1);
+        document.getElementById("outputData").value += "\nfilteredBurgData("+i+").length = " + filteredBurgData.length;
+        filteredBurgData = filteredBurgData.filter(burg => burg.Culture == itemCultureText);
+        document.getElementById("outputData").value += "\nfilteredBurgData("+i+").length = " + filteredBurgData.length;
+        filteredBurgData = filteredBurgData.filter(burg => burg.Religion == itemReligionText);
+        document.getElementById("outputData").value += "\nfilteredBurgData("+i+").length = " + filteredBurgData.length;
+        foundBurg = "";
+        for (y = 0; y < filteredBurgData.length; y++) {
+          burgFound = true;
+          foundBurg = filteredBurgData[y];
+          burgLatitude = foundBurg.Latitude;
+          burgLongtitude = foundBurg.Longitude;
+          for (x = 0; x < cellCoordinates.length; x++) {
+            cellLongtitude = cellCoordinates[x][0];
+            cellLatitude = cellCoordinates[x][1];
+            if(cellLongtitude > 0 && burgLongtitude > cellLongtitude){
+              burgFound = false;
+            } else if (cellLongtitude < 0 && burgLongtitude < cellLongtitude){
+              burgFound = false;
+            } else if (cellLatitude > 0 && burgLatitude > cellLatitude){
+              burgFound = false;
+            } else if (cellLatitude < 0 && burgLatitude < cellLatitude){
+              burgFound = false;
+            }
+            if(!burgFound){x = cellCoordinates.length + 100}
+          }
+          if(burgFound){y = filteredBurgData.length+100}
+        }
+        if(burgFound){
+          let foundburgName = foundBurg.Burg;
+          document.getElementById("outputData").value += "\nburgFound = " + foundburgName;
+          jsonCell.keys = "$Location["+foundburgName+"]";
+          jsonCell.entry = foundburgName + ":[ "
+          jsonCell.entry += "DESC: town; "
+          jsonCell.entry += "BIOME: " + itemBiomeText + "; ";
+        } else {
+          jsonCell.keys = "$Location["+itemBiomeText+"]";
+          jsonCell.entry = itemBiomeText + ":[ "
+          jsonCell.entry += "DESC: "+itemBiomeText + "; ";
+        }
+        jsonCell.entry += "PROVINCE: " + itemProvinceText + "; ";
+        jsonCell.entry += "STATE: " + itemStateText + "; ";
+        jsonCell.entry += "RELIGION: " + itemReligionText + "; ";
+        jsonCell.entry += "CULTURE: " + itemCultureText;
+        jsonCell.entry += ".]"
+        jsonCellList.push(JSON.parse(JSON.stringify(jsonCell)));
+        
+        i += 30;
+      }
+      
+       document.getElementById("outputData").value += "\njsonCellList[2] = " + jsonCellList[2].entry;
+       document.getElementById("outputJSONData").value = JSON.stringify(jsonCellList);
+      return;
+    }
+    
+    
+    
+    function numberToName(dataArray, number, property) {
+      let name = "";
+      let numberInt = parseInt(number);
+      let selectedItems = dataArray.filter(item => item.Id == numberInt);
+      if(selectedItems.length > 0){
+        name = selectedItems[0][property];
+      }
+      return name;
+    }
+    
+    /*
+  {
+    "type": "worldDescription",
+    "keys": "$Location[Apartment block](\"apartment\")",
+    "entry": "Apartment block:[ DESC: Apartment; FEATURES<Apartment>: Blue window frames, fence around building, gap in center THRE: zombie.]",
+    "hidden": false,
+    "generator": "Manual",
+    "name": null,
+    "description": null,
+    "attributes": {
+      "name": null,
+      "description": null
+    }
+  },
+   */
+</script>
+</html>
