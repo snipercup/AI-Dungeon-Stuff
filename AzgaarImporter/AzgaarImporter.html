@@ -50,22 +50,18 @@
   <script src="https://unpkg.com/papaparse@latest/papaparse.min.js"></script>
   
   <script type="text/javascript">
+    //The user has entered all the required data and pressed the 'process data' button.
+    //It will create a list of checkboxes for the states
     function processdata() {
-      let jsonData = document.getElementById("cellData").value
-      let obj1 = JSON.parse(jsonData);
+      let obj1 = JSON.parse(document.getElementById("cellData").value);
       let outputDataString = "";
-      outputDataString += "jsonData.type = " + obj1.type + "\n";
-      outputDataString += "obj1.features.length = " + obj1.features.length + "\n";
-      const rndInt = Math.floor(Math.random() * obj1.features.length) + 1
-      let randomJsonObject = obj1.features[rndInt]
-      outputDataString += "randomJsonObject = " + randomJsonObject.properties.id + "\n";
       let islandTypes = obj1.features.filter(island => island.properties.type == 'island');
       outputDataString += "islandTypes.length = " + islandTypes.length + "\n";
 
       let csv = document.getElementById("statesData").value
       // Key data by field name instead of index/position
       var results = Papa.parse(csv, {
-        header: true
+        header: true, skipEmptyLines: true
       });
 
       let statesDataArray = results.data
@@ -194,7 +190,7 @@
       
       document.getElementById("outputData").value += "\nstateCells.length = " + stateCells.length;
       
-      let jsonCell = {}, jsonCellList = [];
+      let jsonCell = {}, jsonEntryList = [];
       jsonCell.type = "worldDescription"
       jsonCell.keys = ""
       jsonCell.entry = ""
@@ -204,21 +200,23 @@
       jsonCell.description = null
       jsonCell.attributes = { "name": null, "description": null }
       
-      let itemProvinceText, itemStateText, itemReligionText, itemCultureText, itemBiomeText;
+      let itemProvinceText, itemStateText, itemReligionText, itemCultureText, itemBiomeText, itemPopulationText;
       let burgLatitude, burgLongtitude, cellCoordinates, cellLatitude, cellLongtitude, burgFound, foundBurg;
       let filteredBurgData = [];
       var keys = [];
       
       let selectedCell, selectedProperties;
       for (i = 0; i < stateCells.length; i++) {
+      //for (i = 0; i < 25; i++) {
         selectedCell = stateCells[i];
         selectedProperties = selectedCell.properties;
-        cellCoordinates = selectedCell.geometry.coordinates;
+        cellCoordinates = selectedCell.geometry.coordinates[0];
         itemProvinceText = numberToName(provincesDataArray, selectedProperties.province, "Province");
         itemStateText = numberToName(statesDataArray, selectedProperties.state, "State");
         itemReligionText = numberToName(religionDataArray, selectedProperties.religion, "Religion");
         itemCultureText = numberToName(cultureDataArray, selectedProperties.culture, "Culture");
         itemBiomeText = numberToName(biomeDataArray, selectedProperties.biome, "Biome");
+        itemPopulationText = selectedProperties.population;
         document.getElementById("outputData").value += "\n\nitemProvinceText("+selectedProperties.id+") = " + itemProvinceText;
         document.getElementById("outputData").value += "\nitemStateText = " + itemStateText;
         document.getElementById("outputData").value += "\nitemReligionText = " + itemReligionText;
@@ -233,62 +231,103 @@
         document.getElementById("outputData").value += "\nfilteredBurgData("+i+").length = " + filteredBurgData.length;
         filteredBurgData = filteredBurgData.filter(burg => burg.Religion == itemReligionText);
         document.getElementById("outputData").value += "\nfilteredBurgData("+i+").length = " + filteredBurgData.length;
-        foundBurg = "";
+        
         for (y = 0; y < filteredBurgData.length; y++) {
-          burgFound = true;
           foundBurg = filteredBurgData[y];
-          burgLatitude = foundBurg.Latitude;
-          burgLongtitude = foundBurg.Longitude;
-          for (x = 0; x < cellCoordinates.length; x++) {
-            cellLongtitude = cellCoordinates[x][0];
-            cellLatitude = cellCoordinates[x][1];
-            if(cellLongtitude > 0 && burgLongtitude > cellLongtitude){
-              burgFound = false;
-            } else if (cellLongtitude < 0 && burgLongtitude < cellLongtitude){
-              burgFound = false;
-            } else if (cellLatitude > 0 && burgLatitude > cellLatitude){
-              burgFound = false;
-            } else if (cellLatitude < 0 && burgLatitude < cellLatitude){
-              burgFound = false;
-            }
-            if(!burgFound){x = cellCoordinates.length + 100}
+          if(betweenCoordinates(cellCoordinates, foundBurg)){
+            document.getElementById("outputData").value += "\nburg "+foundBurg.Burg+" was it";
+            break;
+          } else {
+            document.getElementById("outputData").value += "\nburg "+foundBurg.Burg+" not was it";
+            foundBurg = null;
           }
-          if(burgFound){y = filteredBurgData.length+100}
         }
-        if(burgFound){
+        
+        let cellAverageCoord = averageCellCoordinates(cellCoordinates);
+        
+        if(foundBurg){ //This cell contains a burg
           let foundburgName = foundBurg.Burg;
           document.getElementById("outputData").value += "\nburgFound = " + foundburgName;
           jsonCell.keys = "$Location["+foundburgName+"]";
           jsonCell.entry = foundburgName + ":[ "
           jsonCell.entry += "DESC: town; "
           jsonCell.entry += "BIOME: " + itemBiomeText + "; ";
-        } else {
+        } else { //This cell does not contain a burg. It is wilderness
           jsonCell.keys = "$Location["+itemBiomeText+"]";
           jsonCell.entry = itemBiomeText + ":[ "
-          jsonCell.entry += "DESC: "+itemBiomeText + "; ";
+          jsonCell.entry += "DESC: "+ itemBiomeText + "; ";
         }
         jsonCell.entry += "PROVINCE: " + itemProvinceText + "; ";
         jsonCell.entry += "STATE: " + itemStateText + "; ";
         jsonCell.entry += "RELIGION: " + itemReligionText + "; ";
-        jsonCell.entry += "CULTURE: " + itemCultureText;
+        jsonCell.entry += "CULTURE: " + itemCultureText + "; ";
+        jsonCell.entry += "LONGTITUDE: " + cellAverageCoord[0] + "; ";
+        jsonCell.entry += "LATITUDE: " + cellAverageCoord[1] + "; ";
+        jsonCell.entry += "POPULATION: " + itemPopulationText;
         jsonCell.entry += ".]"
-        jsonCellList.push(JSON.parse(JSON.stringify(jsonCell)));
+        jsonEntryList.push(JSON.parse(JSON.stringify(jsonCell)));
         
         //i += 30;
       }
       
-       document.getElementById("outputData").value += "\njsonCellList[2] = " + jsonCellList[2].entry;
-       document.getElementById("outputJSONData").value = JSON.stringify(jsonCellList);
+      document.getElementById("outputData").value += "\njsonCellList[2] = " + jsonEntryList[2].entry;
+      document.getElementById("outputJSONData").value = JSON.stringify(jsonEntryList);
       return;
     }
     
     
+    //Takes an array of cell coordinates and a burg from a list
+    //Returns true if the coordinates of the burg are inside the coordinates of the cell
+    function betweenCoordinates(cellCoordinates, foundBurg) {
+      let cellLongtitude, cellLatitude, burgLatitude, burgLongtitude;
+      burgLatitude = foundBurg.Latitude;
+      burgLongtitude = foundBurg.Longitude;
+      document.getElementById("outputData").value += "\nfoundburg = "+foundBurg.Burg+", lat = "+burgLatitude+", long = "+burgLongtitude
+      for (x = 0; x < cellCoordinates.length; x++) {
+        cellLongtitude = cellCoordinates[x][0];
+        cellLatitude = cellCoordinates[x][1];
+        document.getElementById("outputData").value += "\n cellLongtitude = "+cellLongtitude+", cellLatitude = "+cellLatitude+", burgLongtitude = "+burgLongtitude+", burgLatitude = "+burgLatitude;
+        if(cellLongtitude > 0 && burgLongtitude > cellLongtitude){
+          return false;
+        } else if (cellLongtitude < 0 && burgLongtitude < cellLongtitude){
+          return false;
+        } else if (cellLatitude > 0 && burgLatitude > cellLatitude){
+          return false;
+        } else if (cellLatitude < 0 && burgLatitude < cellLatitude){
+          return false;
+        }
+      }
+      return true;
+    }
     
+    //Takes an array of pairs of coordinates.
+    //Returns the average of the langtitude and the average of the latitude.
+    function averageCellCoordinates(cellCoordinates) {
+      let totalLatitude = 0;
+      let totalLongtitude = 0;
+      let avgLatitude = 0;
+      let avgLongtitude = 0;
+      let coordinatesLength = cellCoordinates.length;
+      let cellLongtitude, cellLatitude;
+      for (x = 0; x < coordinatesLength; x++) {
+        cellLongtitude = cellCoordinates[x][0];
+        cellLatitude = cellCoordinates[x][1];
+        totalLatitude += cellLatitude;
+        totalLongtitude += cellLongtitude;
+      }
+      avgLatitude = totalLatitude/coordinatesLength;
+      avgLongtitude = totalLongtitude/coordinatesLength;
+      document.getElementById("outputData").value += "\n avgLatitude = " + avgLatitude + ", avgLongtitude = " + avgLongtitude;
+      return [avgLongtitude, avgLatitude];
+    }
+    
+    //Takes a data array of ID's and names, a number representing an id from that list and 
+    //the name of a property that contains the name associated with that ID
     function numberToName(dataArray, number, property) {
       let name = "";
       let numberInt = parseInt(number);
       let selectedItems = dataArray.filter(item => item.Id == numberInt);
-      if(selectedItems.length > 0){
+      if(selectedItems.length > 0){ //Since the dataArray should only include unique entries, the first of the filter result should be the correct entry
         name = selectedItems[0][property];
       }
       return name;
