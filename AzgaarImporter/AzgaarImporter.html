@@ -166,7 +166,7 @@
 
       //The total amount of cells is reduced to only the cells of which their state is selected in the checkboxes
       let i, stateVar;
-      let stateCells = [];
+      let stateCells = []; //Contains cells that have their state selected in the checkboxes
       for (i = 0; i < statesDataArray.length; i++) {
         stateVar = statesDataArray[i]
         if(stateVar["Id"]){
@@ -223,13 +223,13 @@
         filteredBurgData = filteredBurgData.filter(burg => burg.Religion == itemReligionText);
         //document.getElementById("outputData").value += "\nfilteredBurgData("+i+").length = " + filteredBurgData.length;
         
+        foundBurg = null;
         for (y = 0; y < filteredBurgData.length; y++) {
           foundBurg = filteredBurgData[y];
           if(betweenCoordinates(cellCoordinates, foundBurg)){
-            //document.getElementById("outputData").value += "\nburg "+foundBurg.Burg+" was it";
+            //if(foundBurg.Burg == "Marideq"){console.log("Marideq is found")}
             break;
           } else {
-            //document.getElementById("outputData").value += "\nburg "+foundBurg.Burg+" not was it";
             foundBurg = null;
           }
         }
@@ -241,20 +241,43 @@
           //document.getElementById("outputData").value += "\nburgFound = " + foundburgName;
           jsonEntry.keys = "$Location["+foundburgName+"]";
           jsonEntry.entry = foundburgName + ":[ ";
-          jsonEntry.entry += "DESC: town; ";
+          if(itemProvinceText){
+            jsonEntry.entry += "DESC: a town in "+itemProvinceText+"; ";
+          } else {
+            jsonEntry.entry += "DESC: a town in the neutral zone; ";
+          }
           jsonEntry.entry += "BIOME: " + itemBiomeText + "; ";
+          jsonEntry.entry += "SUMMARY: ";
+          if(foundBurg.Burg == "Marideq"){console.log("adding Marideq to jsonlist")}
         } else { //This cell does not contain a burg. It is wilderness
           jsonEntry.keys = "$Location["+itemBiomeText+"]";
           jsonEntry.entry = itemBiomeText + ":[ ";
           jsonEntry.entry += "DESC: "+ itemBiomeText + "; ";
+          if(itemProvinceText){
+            jsonEntry.entry += "SUMMARY: is inside "+itemProvinceText+", ";
+          } else {
+            jsonEntry.entry += "SUMMARY: ";
+          }
         }
-        jsonEntry.entry += "PROVINCE: " + itemProvinceText + "; ";
-        jsonEntry.entry += "STATE: " + itemStateText + "; ";
-        jsonEntry.entry += "RELIGION: " + itemReligionText + "; ";
-        jsonEntry.entry += "CULTURE: " + itemCultureText + "; ";
-        jsonEntry.entry += "LONGTITUDE: " + cellAverageCoord[0] + "; ";
-        jsonEntry.entry += "LATITUDE: " + cellAverageCoord[1] + "; ";
-        jsonEntry.entry += "POPULATION: " + itemPopulationText;
+        //jsonEntry.entry += "it is "+stateVar["Area mi2"]+" square miles, "; //cell doesn't have an area in properties, maybe calculate?
+        if(itemCultureText != "Wildlands"){
+          jsonEntry.entry += "the dominant culture is "+itemCultureText+", ";
+        }
+        if(itemReligionText != "No religion"){
+          jsonEntry.entry += "the common religion is "+itemReligionText+", ";
+        }
+        if(itemPopulationText > 0){
+          jsonEntry.entry += itemPopulationText+" people live here";
+        } else {
+          jsonEntry.entry += "no people live here";
+        }
+        //jsonEntry.entry += "PROVINCE: " + itemProvinceText + "; ";
+        //jsonEntry.entry += "STATE: " + itemStateText + "; ";
+        //jsonEntry.entry += "RELIGION: " + itemReligionText + "; ";
+        //jsonEntry.entry += "CULTURE: " + itemCultureText + "; ";
+        //jsonEntry.entry += "LONGTITUDE: " + cellAverageCoord[0] + "; ";
+        //jsonEntry.entry += "LATITUDE: " + cellAverageCoord[1] + "; ";
+        //jsonEntry.entry += "POPULATION: " + itemPopulationText;
         jsonEntry.entry += ".]"
         jsonEntryList.push(JSON.parse(JSON.stringify(jsonEntry)));
         
@@ -271,14 +294,20 @@
             jsonEntry.keys = "$Lore["+stateName+"]("+stateName+")";
             jsonEntry.entry = stateName + ":[ ";
             jsonEntry.entry += "DESC: "+stateVar["Form"]+"; ";
-            jsonEntry.entry += "CAPITAL: "+stateVar["Capital"]+"; ";
-            jsonEntry.entry += "CULTURE: "+stateVar["Culture"]+"; ";
+            jsonEntry.entry += "SUMMARY: there are "+stateVar["Burgs"]+" towns, ";
+            jsonEntry.entry += "the capital is "+stateVar["Capital"]+", ";
+            jsonEntry.entry += "it is "+stateVar["Area mi2"]+" square miles, ";
+            jsonEntry.entry += "the dominant culture is "+stateVar["Culture"]+", ";
+            jsonEntry.entry += stateVar["Total Population"]+" people live here";
+            jsonEntry.entry += ".]"
+            //jsonEntry.entry += "CAPITAL: "+stateVar["Capital"]+"; ";
+            //jsonEntry.entry += "CULTURE: "+stateVar["Culture"]+"; ";
             //jsonEntry.entry += "TYPE: "+stateVar["Type"]+"; "; //Not sure if this adds anything that the AI can use
-            jsonEntry.entry += "TOWNS: "+stateVar["Burgs"]+"; ";
-            jsonEntry.entry += "SIZE<square_mile>: "+stateVar["Area mi2"]+"; ";
-            jsonEntry.entry += "POPULATION: "+stateVar["Total Population"]+"; ";
-            jsonEntry.entry += "RURAL: "+stateVar["Rural Population"]+"; ";
-            jsonEntry.entry += "URBAN: "+stateVar["Urban Population"];
+            //jsonEntry.entry += "TOWNS: "+stateVar["Burgs"]+"; ";
+            //jsonEntry.entry += "SIZE<square_mile>: "+stateVar["Area mi2"]+"; ";
+            //jsonEntry.entry += "POPULATION: "+stateVar["Total Population"]+"; ";
+            //jsonEntry.entry += "RURAL: "+stateVar["Rural Population"]+"; ";
+            //jsonEntry.entry += "URBAN: "+stateVar["Urban Population"];
             jsonEntryList.push(JSON.parse(JSON.stringify(jsonEntry)));
           }
         }
@@ -290,18 +319,22 @@
         provinceVar = provinceDataArray[i];
         provinceStateName = provinceVar["State"];
         if(document.getElementById("statebox" + provinceStateName).checked){
-          document.getElementById("outputData").value += "\nprovinceStateName = " + provinceStateName;
           provinceName = provinceVar["Province"];
           if(provinceName){
             jsonEntry.keys = "$Lore["+provinceName+"]("+provinceName+")";
             jsonEntry.entry = provinceName + ":[ ";
-            jsonEntry.entry += "DESC: "+provinceVar["Form"]+"; ";
-            jsonEntry.entry += "STATE: "+provinceVar["State"]+"; ";
-            jsonEntry.entry += "CAPITAL: "+provinceVar["Capital"]+"; ";
-            jsonEntry.entry += "SIZE<square_mile>: "+provinceVar["Area mi2"]+"; ";
-            jsonEntry.entry += "POPULATION: "+provinceVar["Total Population"]+"; ";
-            jsonEntry.entry += "RURAL: "+provinceVar["Rural Population"]+"; ";
-            jsonEntry.entry += "URBAN: "+provinceVar["Urban Population"];
+            jsonEntry.entry += "DESC: a "+provinceVar["Form"]+" inside "+provinceVar["State"]+"; ";
+            jsonEntry.entry += "SUMMARY: ";
+            jsonEntry.entry += "the capital is "+provinceVar["Capital"]+", ";
+            jsonEntry.entry += "it is "+provinceVar["Area mi2"]+" square miles, ";
+            jsonEntry.entry += provinceVar["Total Population"]+" people live here";
+            //jsonEntry.entry += "STATE: "+provinceVar["State"]+"; ";
+            //jsonEntry.entry += "CAPITAL: "+provinceVar["Capital"]+"; ";
+            //jsonEntry.entry += "SIZE<square_mile>: "+provinceVar["Area mi2"]+"; ";
+            //jsonEntry.entry += "POPULATION: "+provinceVar["Total Population"]+"; ";
+            //jsonEntry.entry += "RURAL: "+provinceVar["Rural Population"]+"; ";
+            //jsonEntry.entry += "URBAN: "+provinceVar["Urban Population"];
+            jsonEntry.entry += ".]"
             jsonEntryList.push(JSON.parse(JSON.stringify(jsonEntry)));
           }
         }
@@ -318,10 +351,10 @@
     function betweenCoordinates(cellCoordinates, foundBurg) {
       let cellLongtitude, cellLatitude, burgLatitude, burgLongtitude
       let smallestCellLatitude, biggestCellLatitude, smallestCellLongtitude, biggestCellLongtitude;
-      //if(foundBurg.Burg == "Pevalo"){console.log("calculating coords for Pevalo")}
+      if(foundBurg.Burg == "Marideq"){console.log("calculating coords for Marideq")}
       burgLatitude = foundBurg.Latitude;
       burgLongtitude = foundBurg.Longitude;
-      //if(foundBurg.Burg == "Pevalo"){console.log("burgLatitude = "+burgLatitude+", burgLongtitude = "+burgLongtitude)}
+      if(foundBurg.Burg == "Marideq"){console.log("burgLatitude = "+burgLatitude+", burgLongtitude = "+burgLongtitude)}
       //document.getElementById("outputData").value += "\nfoundburg = "+foundBurg.Burg+", lat = "+burgLatitude+", long = "+burgLongtitude
       for (x = 0; x < cellCoordinates.length; x++) {
         cellLongtitude = cellCoordinates[x][0];
@@ -338,9 +371,9 @@
           if(cellLongtitude > biggestCellLongtitude){biggestCellLongtitude = cellLongtitude}
         }
       }
-      //if(foundBurg.Burg == "Pevalo"){console.log("cellLatitude = "+cellLatitude+", cellLongtitude = "+cellLongtitude)}
-      //if(foundBurg.Burg == "Pevalo"){console.log("biggestCellLongtitude = "+biggestCellLongtitude+", smallestCellLongtitude = "+smallestCellLongtitude)}
-      //if(foundBurg.Burg == "Pevalo"){console.log("biggestCellLatitude = "+biggestCellLatitude+", smallestCellLatitude = "+smallestCellLatitude)}
+      if(foundBurg.Burg == "Marideq"){console.log("cellLatitude = "+cellLatitude+", cellLongtitude = "+cellLongtitude)}
+      if(foundBurg.Burg == "Marideq"){console.log("biggestCellLongtitude = "+biggestCellLongtitude+", smallestCellLongtitude = "+smallestCellLongtitude)}
+      if(foundBurg.Burg == "Marideq"){console.log("biggestCellLatitude = "+biggestCellLatitude+", smallestCellLatitude = "+smallestCellLatitude)}
       //document.getElementById("outputData").value += "\n cellLongtitude = "+cellLongtitude+", cellLatitude = "+cellLatitude+", burgLongtitude = "+burgLongtitude+", burgLatitude = "+burgLatitude;
       if(burgLongtitude > biggestCellLongtitude){
         return false;
@@ -351,7 +384,7 @@
       } else if (burgLatitude < smallestCellLatitude){
         return false;
       }
-      //if(foundBurg.Burg == "Pevalo"){console.log("return true")}
+      if(foundBurg.Burg == "Marideq"){console.log("return true")}
         
       return true;
     }
