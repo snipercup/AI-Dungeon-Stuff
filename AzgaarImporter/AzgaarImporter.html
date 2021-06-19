@@ -73,7 +73,7 @@
       for (i = 0; i < statesDataArray.length; i++) {
         stateVar = statesDataArray[i]
         if(stateVar["State"]){
-          statesCheckHTML += "<input type='checkbox' checked id='statebox" + stateVar["State"] + "'/> ";
+          statesCheckHTML += "<input type='checkbox' checked id='statebox" + stateVar["State"].replace("'", "") + "'/> ";
           statesCheckHTML += "<label>" + stateVar["State"] + "</label><BR>"
         }
       }
@@ -171,7 +171,7 @@
       for (i = 0; i < statesDataArray.length; i++) {
         stateVar = statesDataArray[i]
         if(stateVar["Id"]){
-          if(document.getElementById("statebox" + stateVar["State"]).checked){
+          if(document.getElementById("statebox" + stateVar["State"].replace("'", "")).checked){
             stateInt = parseInt(stateVar["Id"]);
             stateSelectedCells = islandTypes.filter(state => state.properties.state == stateInt);
             stateCells = stateCells.concat(stateSelectedCells); 
@@ -212,7 +212,11 @@
         itemElevationText = selectedProperties.height;
 
         filteredBurgData = burgDataArray.filter(burg => burg.State.indexOf(itemStateText) > -1);
-        cellStateName = filteredBurgData[0].State; //Gets the actual name of the state
+        if(filteredBurgData[0]){
+          cellStateName = filteredBurgData[0].State; //Gets the actual name of the state
+        } else {
+          cellStateName = "";
+        }
         filteredBurgData = filteredBurgData.filter(burg => burg.Province.indexOf(itemProvinceText) > -1);
         filteredBurgData = filteredBurgData.filter(burg => burg.Culture == itemCultureText);
         filteredBurgData = filteredBurgData.filter(burg => burg.Religion == itemReligionText);
@@ -278,9 +282,13 @@
         stateVar = statesDataArray[i];
         stateName = stateVar["State"];
         if(stateName){
-          if(document.getElementById("statebox" + stateName).checked){
+          if(document.getElementById("statebox" + stateName.replace("'", "")).checked){
             cellFilteredStateData = burgDataArray.filter(burg => burg.State.indexOf(stateName) > -1);
-            cellStateName = cellFilteredStateData[0].State; //Gets the actual name of the state
+            if(cellFilteredStateData[0]){
+              cellStateName = cellFilteredStateData[0].State; //Gets the actual name of the state
+            } else {
+              cellStateName = stateName;
+            }
             jsonEntry.keys = "$Lore["+cellStateName+"]("+stateName+")";
             jsonEntry.entry = cellStateName + ":[ ";
             if(stateName == "Neutrals"){
@@ -304,7 +312,7 @@
       for (i = 0; i < provinceDataArray.length; i++) {
         provinceVar = provinceDataArray[i];
         provinceStateName = provinceVar["State"];
-        if(document.getElementById("statebox" + provinceStateName).checked){
+        if(document.getElementById("statebox" + provinceStateName.replace("'", "")).checked){
           provinceName = provinceVar["Province"];
           if(provinceName){
             jsonEntry.keys = "$Lore["+provinceName+"]("+provinceName+")";
