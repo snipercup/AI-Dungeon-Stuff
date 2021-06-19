@@ -1,5 +1,7 @@
 # Azgaar importer
 This tool converts data exported from [Azgaar's map creator](https://azgaar.github.io/Fantasy-Map-Generator/) to a format you can import into AI dungeon world info. This allows you to play on a fantasy map you created in Azgaar. 
+
+You can check out a couple of examples in the WorldInfoOutput folder. You can import them into AI dungeon but they need [Taleir's scripts](https://github.com/TaleirOfDeynai/wip-ai-dungeon-mods) 
 Note: This tool only imports land cells for now, no ocean cells
 
 ## How to use
@@ -38,6 +40,7 @@ Note: This tool only imports land cells for now, no ocean cells
 1. Now that you have entered all the data from your Azgaar map, click on the 'Process data' button in the bottom-left
 1. You see a list of checkboxes appear on the right. Each checkbox corresponds to the states of your map. Uncheck the states you don't want to import into AID. You should uncheck some, because otherwise there will be a lot of data to import. To choose what states to uncheck, you should look at the image of your map you downloaded earlier and choose some states on the edges of the map so no holes are left if they don't get imported into AI dungeon.
 1. Click on 'Convert cells'. The output you need is under 'JSON Output'. Copy all the output and put it in a text file and save it as 'worldinfo.json' somewhere on your computer
-2. Go to AI dungeon and click on 'world info' in your adventure or scenario.
-3. Click on the import button on the top-right. Now your data is imported.
+2. Go to AI dungeon and import [Taleir's scripts](https://github.com/TaleirOfDeynai/wip-ai-dungeon-mods).
+3. Click on 'world info' in your adventure or scenario.
+4. Click on the import button on the top-right. Now your data is imported.
       
