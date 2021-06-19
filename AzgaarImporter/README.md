@@ -1,7 +1,7 @@
 # Azgaar importer
 This tool converts data exported from [Azgaar's map creator](https://azgaar.github.io/Fantasy-Map-Generator/) to a format you can import into AI dungeon world info. This allows you to play on a fantasy map you created in Azgaar. 
 
-You can check out a couple of examples in the WorldInfoOutput folder. You can import them into AI dungeon but they need [Taleir's scripts](https://github.com/TaleirOfDeynai/wip-ai-dungeon-mods) 
+You can check out a couple of examples in the [WorldInfoOutput](https://github.com/snipercup/AI-Dungeon-Stuff/tree/main/AzgaarImporter/WorldInfoOutput)  folder. You can import them into AI dungeon but they need [Taleir's scripts](https://github.com/TaleirOfDeynai/wip-ai-dungeon-mods) 
 Note: This tool only imports land cells for now, no ocean cells
 
 ## How to use
