@@ -10,6 +10,8 @@ Link | Name | Description
 [Kingdom](https://perchance.org/fantasy-kingdom-generator-by-trash-queen) | X | X
 [Town](https://perchance.org/fantasytowns) |  | X
 
+## Mine
+[Fantasy character](https://perchance.org/aid-fantasy-character-generator)
 
 
 
