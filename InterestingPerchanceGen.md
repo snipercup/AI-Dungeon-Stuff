@@ -12,6 +12,7 @@ Link | Name | Description
 
 ## Mine
 [Fantasy character](https://perchance.org/aid-fantasy-character-generator)
+
 [Fantasy location](https://perchance.org/aid-fantasy-location-generator)
 
 
