@@ -210,7 +210,6 @@ function describeAreaShare(area) {
   return "very little of your time";
 }
 
-// ===== Wrapper that uses player DO text, updates state, tracks time, and sets currentscene =====
 function classifyTurn(aiText) {
   // Ensure global state
   if (typeof globalThis.state !== "object" || !globalThis.state) globalThis.state = {};
@@ -228,19 +227,12 @@ function classifyTurn(aiText) {
 
   if (!aiText || typeof aiText !== "string") return "unknown: invalid input";
 
-  // Choice prompt: count a turn but don't update area
+  // ❌ Choice prompt: short-circuit immediately
   if (aiText.trim().toLowerCase().startsWith(">>> please select")) {
-    const areaNow = state.currentArea || "unknown";
-    state.areaTurns[areaNow] = (state.areaTurns[areaNow] || 0) + 1;
-    state.totalTurns += 1;
-
-    const share = describeAreaShare(areaNow);
-    state.currentscene = `current scene: you are in the ${areaNow}, where you spend ${share}.`;
-
-    log(`Detected area: ${areaNow}, Movement: false (choice), Final classification: ${areaNow}. Summary: ${state.currentscene}`);
-    return areaNow;
+    return "unknown: invalid input";
   }
 
+  // Combine AI text + player's DO action text
   const playerDo = getPlayerDoText();
   const combined = playerDo ? (aiText + "\n" + playerDo) : aiText;
 
@@ -264,15 +256,15 @@ function classifyTurn(aiText) {
   state.totalTurns += 1;
 
   const share = describeAreaShare(areaToCredit);
-
-  // ✨ Store scene summary
   state.currentscene = `current scene: you are in the ${areaToCredit}, where you spend ${share}.`;
 
-   // Detailed log
+  const cardHit = findFirstCardInPlayerDo(playerDo);
+
   log(
     `Detected area: ${detected}, Movement: ${moved}, Final classification: ${classification}` +
     (playerDo ? `, Player DO: ${JSON.stringify(playerDo)}` : `, Player DO: <none>`) +
-    `. Time so far — city:${state.areaTurns.city}, road:${state.areaTurns.road}, underground:${state.areaTurns.underground}, wilderness:${state.areaTurns.wilderness}, total:${state.totalTurns}. Summary: the player is currently in "${areaToCredit}", a place where they spend ${share}.`
+    `. Time so far — city:${state.areaTurns.city}, road:${state.areaTurns.road}, underground:${state.areaTurns.underground}, wilderness:${state.areaTurns.wilderness}, total:${state.totalTurns}. Summary: the player is currently in "${areaToCredit}", a place where they spend ${share}.` +
+    ` Card mention: ${cardHit ? cardHit.title : "<none>"}`
   );
 
   return classification;
