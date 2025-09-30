@@ -3,6 +3,7 @@ function _stripQuotedSegments(t) {
   return t.replace(/"[^"]*"|'[^']*'/g, "");
 }
 
+
 // Detect movement, ignoring quoted text, but allowing verb + quoted place
 function didMove(aiText) {
   if (!aiText || typeof aiText !== "string") return false;
@@ -20,18 +21,19 @@ function didMove(aiText) {
       "step","stepped","steps",
       "head","headed","heads",
       "move","moved","moves",
-      "travel","traveled","travels",
+      "travel","traveled","travels","traveling",           // ← NEW
       "proceed","proceeded","proceeds",
       "approach","approached","approaches",
       "near","nearing",
       "arrive","arrived","arrives",
-      "return","returned","returns"
+      "return","returned","returns",
+      "continue","continued","continues","continuing"      // ← NEW
     ].join("|") + ")\\b",
     "i"
   );
 
   // Macro location targets
-  const LOCATION_TARGETS = /\b(gate|gates|street|streets|alley|alleyway|plaza|square|district|market|city|outside|inside|hallway|main hall|office|guild|inn|tavern|shop|building|house|home|doorway|threshold|road|path|trail|tunnel|cavern|chamber|sewer|crypt|catacombs?|manor|estate|grounds|foyer|entrance|village hall)\b/;
+  const LOCATION_TARGETS = /\b(gate|gates|street|streets|alley|alleyway|plaza|square|district|market|city|outside|inside|hallway|main hall|office|guild|inn|tavern|shop|building|house|home|doorway|threshold|road|path|trail|tunnel|cavern|chamber|sewer|crypt|catacombs?|manor|estate|grounds|foyer|entrance|village hall|waystation|border post|horizon)\b/; // ← added waystation, border post, horizon
 
   // High-confidence macro transitions (evaluated on unquoted text)
   const MACRO_PATTERNS = [
@@ -41,68 +43,66 @@ function didMove(aiText) {
     /\b(enter(?:ed|s)?|leave|left|exit(?:ed)?)\s+(?:the\s+)?(city|office|guild|inn|tavern|shop|building|house|home|tunnel|cavern|chamber|sewer|crypt|manor|estate|foyer|village hall)\b/,
     /\b(through|along)\s+the\s+(street|streets|alley|alleyway)\b/,
     /\bback\s+to\s+(scale haven)\b/,
-    /\broad\b.*\bwinds?\b/,
+    /\broad\b.*\b(winds?|curv(?:e|es|ing)|bends?)\b/,                 // ← enhanced: curving/bending
     /\b(as you )?near(?:ing)?\s+(?:the\s+)?(estate|manor|entrance)\b/,
-    /\blooms?\s+ahead\b/
+    /\blooms?\s+ahead\b/,
+
+    // NEW: explicit approach/progress cues
+    /\bwaystation\b.*\b(recedes|falls away|fades)\b/,
+    /\b(continue|continuing|continued)\s+(eastward|westward|northward|southward)\b/,
+    /\b(towers?|border post)\s+(?:appear|looms?)\s+(?:on\s+)?the\s+horizon\b/
   ];
 
   // SPECIAL CASE: verb outside quotes + quoted place name → movement
-  // e.g., 'you head to "Weathered Duckling"' or 'enter "The Tangled Skein"'
-  const VERB_PLUS_QUOTED_PLACE = /\b(enter|go|head|walk|step|proceed|return|arrive)\b[^"']{0,40}["'][^"']+["']/.test(t);
+  const VERB_PLUS_QUOTED_PLACE = /\b(enter|go|head|walk|step|proceed|return|arrive|travel)\b[^"']{0,40}["'][^"']+["']/.test(t);
 
-  // 1) If no motion verbs in UNQUOTED text and no special case and no macro transition → no movement
   const hasMotionVerbUnquoted = MOTION_TOKENS.test(unq);
   const hasMacroTransitionUnquoted = MACRO_PATTERNS.some((re) => re.test(unq));
   if (!hasMotionVerbUnquoted && !hasMacroTransitionUnquoted && !VERB_PLUS_QUOTED_PLACE) return false;
 
-  // 2) Macro transition outside quotes → movement
   if (hasMacroTransitionUnquoted) return true;
-
-  // 3) Special case: verb + quoted place → movement
   if (VERB_PLUS_QUOTED_PLACE) return true;
 
-  // 4) Otherwise require verb + macro location target *outside quotes*
+  // Otherwise require verb + macro location target *outside quotes*
   return hasMotionVerbUnquoted && LOCATION_TARGETS.test(unq);
 }
+
 function detectArea(aiText) {
   if (!aiText || typeof aiText !== "string") return "unknown: invalid input";
-  const text = aiText.toLowerCase();
+  const raw = aiText.toLowerCase();
+
+  // Ignore quoted dialogue for area scoring
+  const text = _stripQuotedSegments(raw);
+
   const rx = (pat, flags = "gi") =>
     pat instanceof RegExp ? new RegExp(pat.source, flags) : new RegExp(pat, flags);
 
   const PHRASES = {
     city: [
-      // City/urban entry & structures
-      { re: rx(/\b(city gates?)\b/), weight: 7 },
-      { re: rx(/\b(guards? at the gates?)\b/), weight: 7 },
-      { re: rx(/\b(city gates? (?:stand )?(?:open|ajar))\b/), weight: 9 },
+      { re: rx(/\b(city gates?)\b/), weight: 9 },
+      { re: rx(/\b(guards?\s+at\s+the\s+gates?)\b/), weight: 9 },
       { re: rx(/\b(through the (?:city )?gates)\b/), weight: 8 },
+      { re: rx(/\b(city gates? (?:stand )?(?:open|ajar))\b/), weight: 9 },
       { re: rx(/\b(inside (?:the )?city)\b/), weight: 8 },
+
+      // ⭐ Strong street/commerce cues
+      { re: rx(/\bstreets?\s+of\s+[a-z']+/), weight: 10 },                 // "streets of Thornmere"
+      { re: rx(/\bmerchants?\s+hawking\s+wares?\b/), weight: 10 },
+      { re: rx(/\bwooden\s+stalls?\b/), weight: 9 },
+      { re: rx(/\bshops?\b/), weight: 8 },
+      { re: rx(/\bworkshops?\b/), weight: 8 },
+      { re: rx(/\bcraftsmen\b/), weight: 7 },
+
+      // ⭐ Tavern/inn entry & interior
+      { re: rx(/\b(inn|tavern)\b.*\b(open doors|welcomes?\s+travelers?)\b/), weight: 10 },
+      { re: rx(/\bthe\s+thorne?\s*&\s*vine\b/), weight: 9 },               // specific name helps
+      { re: rx(/\binside,\s*warm\s+lantern\s+light\b/), weight: 9 },
+      { re: rx(/\bwooden\s+tables?\b/), weight: 7 },
+      { re: rx(/\bpatrons?\b/), weight: 7 },
+      { re: rx(/\b(mugs?\s+of\s+ale|roasting\s+meat|plates?\s+of\s+steaming\s+food)\b/), weight: 8 },
+
+      // Urban public space (kept)
       { re: rx(/\b(cobbled streets?|market square|plaza|district|alley|alleyway)\b/), weight: 7 },
-
-      // ⭐ Village / town treated as "city"
-      { re: rx(/\b(enter(?:ed|s)?|step(?:s|ped)?\s+into)\s+(?:the\s+)?(village|village square|village hall|town square)\b/), weight: 10 },
-      { re: rx(/\b(village|hamlet|small town|settlement)\b/), weight: 7 },
-      { re: rx(/\b(village\s+square|village\s+hall|town\s+square|meeting\s+hall)\b/), weight: 9 },
-      { re: rx(/\b(village\s+elder|elder\b.*\b(village|hall)|council\s*elder)\b/), weight: 8 },
-
-      // Common village-scene tokens (mild)
-      { re: rx(/\b(blacksmith|bellows)\b/), weight: 6 },
-      { re: rx(/\b(herbs?|chickens?)\b/), weight: 5 },
-      { re: rx(/\b(gardens?|doorways?\s+with\s+flowers)\b/), weight: 5 },
-
-      // Guild / civic / interiors
-      { re: rx(/\b(adventurer'?s guild|guild hall|main hall|hallway|front desk|counter)\b/), weight: 7 },
-      { re: rx(/\b(office|private office|council chamber|study|archives?|records (?:room|office))\b/), weight: 8 },
-
-      // Home/shop interiors
-      { re: rx(/\b(front door|shutters?|room|oak (?:cabinet|desk)|cabinet|wardrobe|shelf|counter|cupboard|desk|incense|shuttered windows?)\b/), weight: 8 },
-      { re: rx(/\b(table|tabletop|teapot|tea|bread|plate|purse|coins?)\b/), weight: 6 },
-      { re: rx(/\b(home|house|apartment|sanctuary|lodgings?)\b/), weight: 7 },
-
-      // Neighborhood/home anchors
-      { re: rx(/\b(in|inside|within)\s+(?:the\s+)?[a-z]+(?:'s)?\s+(alley|quarter|ward|market)\b/), weight: 8 },
-      { re: rx(/\b(scale haven)\b/), weight: 8 },
     ],
 
     road: [
@@ -111,12 +111,7 @@ function detectArea(aiText) {
       { re: rx(/\bking'?s road\b/), weight: 8 },
       { re: rx(/\broad (?:back )?to\b/), weight: 7 },
       { re: rx(/\b(bustle of [a-z' ]+ fading (?:behind|away))\b/), weight: 7 },
-      { re: rx(/\broad\b.*\bwinds?\b/), weight: 9 },
-      { re: rx(/\bpath\b.*\b(uneven|cracked)\b/), weight: 8 },
-      { re: rx(/\b(manor|estate)\s+grounds\b/), weight: 7 },
-      { re: rx(/\b(as you )?near(?:ing)?\s+(?:the\s+)?(estate|manor)\b/), weight: 8 },
-      { re: rx(/\blooms?\s+ahead\b/), weight: 7 },
-      { re: rx(/\bovergrown\b.*\b(lavender|hedges?)\b/), weight: 6 },
+      { re: rx(/\b(near|nearing|approach(?:ing)?)\s+(?:the\s+)?(gate|gates|city)\b/), weight: 8 },
     ],
 
     underground: [
@@ -127,9 +122,8 @@ function detectArea(aiText) {
     ],
 
     wilderness: [
-      // 'brush' intentionally removed to avoid hair-brush collisions
-      { re: rx(/\b(ruins?|forest|trees?|glade|clearing|meadow|riverbank|marsh|swamp|hills?|mountains?|desert|canyon|wilds?|shrub)\b/), weight: 5 },
-      { re: rx(/\b(abandoned structure|stone foundations?|old mill|mill race)\b/), weight: 4 },
+      // keep scenery terms but they won’t dominate over strong city cues
+      { re: rx(/\b(ruins?|forest|trees?|glade|clearing|meadow|riverbank|marsh|swamp|hills?|mountains?|desert|canyon|wilds?|shrub|wildflowers?|woods?)\b/), weight: 5 },
       { re: rx(/\b(open air|nature has (overtaken|reclaimed))\b/), weight: 5 },
     ],
   };
@@ -137,24 +131,20 @@ function detectArea(aiText) {
   const WORDS = {
     city: [
       { re: rx(/\bcity\b/), weight: 4 },
-      { re: rx(/\bvillage|hamlet|town|settlement\b/), weight: 6 },              // NEW
-      { re: rx(/\bvillage\s+square|village\s+hall|town\s+square\b/), weight: 7 }, // NEW
-      { re: rx(/\belder\b/), weight: 5 },                                        // NEW (contextual civic role)
-      { re: rx(/\bstreet(s)?|alley|alleyway|plaza|market\b/), weight: 4 },
-      { re: rx(/\bshop|inn|tavern|hall|hallway|office|home|house\b/), weight: 5 },
-      { re: rx(/\bblacksmith|bellows|herbs?|chickens?|gardens?\b/), weight: 4 }, // light reinforcement
+      { re: rx(/\bstreet(s)?\b/), weight: 5 },
+      { re: rx(/\bshop(s)?|stall(s)?|workshop(s)?|merchant(s)?\b/), weight: 5 },
+      { re: rx(/\binn|tavern|lantern|patrons?\b/), weight: 5 },
     ],
     road: [
       { re: rx(/\broad(s)?\b/), weight: 4 },
       { re: rx(/\bpath|trail\b/), weight: 3 },
-      { re: rx(/\bmanor|estate|grounds\b/), weight: 3 },
     ],
     underground: [
       { re: rx(/\btunnel(s)?|cavern(s)?|sewer(s)?|crypt(s)?|catacomb(s)?\b/), weight: 6 },
       { re: rx(/\bdark(ness)?\b/), weight: 4 },
     ],
     wilderness: [
-      { re: rx(/\bforest(s)?|tree(s)?|ruin(s)?\b/), weight: 4 },
+      { re: rx(/\bforest(s)?|tree(s)?|ruin(s)?|meadow(s)?|hill(s)?|woods?\b/), weight: 4 },
     ],
   };
 
@@ -176,9 +166,28 @@ function detectArea(aiText) {
   }
 
   const cats = ["underground", "city", "road", "wilderness"];
-  const results = cats.map((c) => ({ c, ...scoreCategory(c) }))
-                      .sort((a, b) => (b.weight - a.weight) || (b.index - a.index));
+  const results = cats.map((c) => ({ c, ...scoreCategory(c) }));
 
+  // 🧭 Conflict resolver: if city street/shop/tavern cues appear with nature scenery, bias to city
+  const hasCityCommerce =
+    /\b(streets?\s+of\s+[a-z']+|merchants?\s+hawking\s+wares?|wooden\s+stalls?|shops?|workshops?|craftsmen|inn|tavern|lantern|patrons?)\b/.test(text);
+  const hasNatureScenery =
+    /\b(forest|trees?|meadow|meadows|hills?|wildflowers?|woods?)\b/.test(text);
+
+  if (hasCityCommerce && hasNatureScenery) {
+    const c = results.find(r => r.c === "city");
+    const w = results.find(r => r.c === "wilderness");
+    if (c) c.weight += 4;
+    if (w) w.weight -= 3;
+  }
+
+  // Additional nudge: “inside” + tavern/inn → city interior
+  if (/\binside\b/.test(text) && /\b(tavern|inn)\b/.test(text)) {
+    const c = results.find(r => r.c === "city");
+    if (c) c.weight += 3;
+  }
+
+  results.sort((a, b) => (b.weight - a.weight) || (b.index - a.index));
   return results[0].weight > 0 ? results[0].c : "unknown: no cues";
 }
 
