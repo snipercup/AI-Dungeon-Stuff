@@ -1,31 +1,39 @@
+//Put this in your shared library card in your adventure (make sure LSIv2 is enabled in the configure autocards story card)
+
 //An array of functions that operate on a single card
 let processorRegistry = [];
 // An array of functions that operate on the entire tracked map periodically
 let scheduledProcessorRegistry = [];
 
-//Returns true if the text variable contains any of the triggers
-//The value of text depends on if it's run in the input, context or output modifier card
-//The script expect it is run in the output modifier card
-function checkCardTrigger(card) {
-  if (!card?.keys || typeof card.keys !== "string") {
-    log("Invalid or missing card.keys");
-    return false;
+///////////////////////////////////
+///////// Main functions //////////
+///////////////////////////////////
+//Main function to tie the other functions together.
+function cardKeeper() {
+  // 🟡 Step 1: Get or create the keeper card
+  const keeperCard = getOrCreateKeeperCard();
+  if (!keeperCard) return null;
+
+  // 🟠 Step 2: Get matching cards
+  const matchingCards = getMatchingCards();
+
+  // 🟢 Step 3: Load the tracked object once
+  let tracked = parseTrackedCards(keeperCard);
+
+  // 🔵 Step 4: Update tracked cards based on matches
+  tracked = runCardProcessors(tracked, matchingCards);
+
+  // 🔶 Step 5: Run scheduled processors
+  for (const scheduled of scheduledProcessorRegistry) {
+    tracked = runScheduledProcessor(scheduled, tracked) || tracked;
   }
 
-  const keywords = card.keys
-    .split(",")
-    .map(k => k.trim().toLowerCase())
-    .filter(k => k.length > 0);
+  // 📝 Step 6: Write updated tracking back to the card
+  keeperCard.description = JSON.stringify(tracked, null, 2);
+  log("Saved updated tracked map to keeperCard.description");
 
-  const normalizedText = text?.toLowerCase() || "";
-
-  for (const key of keywords) {
-    if (normalizedText.includes(key)) {
-      log(`Match found: "${key}" is in text`);
-      return true;
-    }
-  }
-  return false;
+  // 🔴 Step 7: Return matching cards
+  return matchingCards;
 }
 
 //Create the actual keeper card to keep track of card data
@@ -51,6 +59,18 @@ function getOrCreateKeeperCard() {
   return keeperCard;
 }
 
+//Wrapper for the autocards api call to return matching cards that are triggered
+function getMatchingCards() {
+  const matches = AutoCards().API.getCard(checkCardTrigger, true);
+  if (Array.isArray(matches)) {
+    log("Matching cards found:", matches.length);
+    return matches;
+  } else {
+    log("No matching cards found");
+    return [];
+  }
+}
+
 //Parse the contents of the keepercard to manipulate it
 function parseTrackedCards(card) {
   try {
@@ -62,6 +82,31 @@ function parseTrackedCards(card) {
     log("Invalid JSON in keeperCard.description, resetting.");
   }
   return {};
+}
+
+//Returns true if the text variable contains any of the triggers
+//The value of text depends on if it's run in the input, context or output modifier card
+//The script expect it is run in the output modifier card
+function checkCardTrigger(card) {
+  if (!card?.keys || typeof card.keys !== "string") {
+    log("Invalid or missing card.keys");
+    return false;
+  }
+
+  const keywords = card.keys
+    .split(",")
+    .map(k => k.trim().toLowerCase())
+    .filter(k => k.length > 0);
+
+  const normalizedText = text?.toLowerCase() || "";
+
+  for (const key of keywords) {
+    if (normalizedText.includes(key)) {
+      log(`Match found: "${key}" is in text`);
+      return true;
+    }
+  }
+  return false;
 }
 
 //If any functions are in `processorRegistry`, run them against the card that was triggered
@@ -120,6 +165,18 @@ function runScheduledProcessor(scheduleObj, tracked) {
   }
 }
 
+//////////////////////////////////////
+///////// Support functions //////////
+//////////////////////////////////////
+//Thanks lewdleah. Gets the current amount of turns.
+function getTurn() {
+    if (Number.isInteger(info?.actionCount)) {
+        return Math.abs(info.actionCount);
+    } else {
+        return 0;
+    }
+}
+
 //Creates an empty object for a tracked card if none exists
 function createOrGetTrackedEntry(title, trackedMap) {
   if (!trackedMap.hasOwnProperty(title)) {
@@ -130,53 +187,4 @@ function createOrGetTrackedEntry(title, trackedMap) {
   }
 
   return trackedMap[title];
-}
-
-//Wrapper for the autocards api call to return matching cards that are triggered
-function getMatchingCards() {
-  const matches = AutoCards().API.getCard(checkCardTrigger, true);
-  if (Array.isArray(matches)) {
-    log("Matching cards found:", matches.length);
-    return matches;
-  } else {
-    log("No matching cards found");
-    return [];
-  }
-}
-
-//Main function to tie the other functions together.
-function cardKeeper() {
-  // 🟡 Step 1: Get or create the keeper card
-  const keeperCard = getOrCreateKeeperCard();
-  if (!keeperCard) return null;
-
-  // 🟠 Step 2: Get matching cards
-  const matchingCards = getMatchingCards();
-
-  // 🟢 Step 3: Load the tracked object once
-  let tracked = parseTrackedCards(keeperCard);
-
-  // 🔵 Step 4: Update tracked cards based on matches
-  tracked = runCardProcessors(tracked, matchingCards);
-
-  // 🔶 Step 5: Run scheduled processors
-  for (const scheduled of scheduledProcessorRegistry) {
-    tracked = runScheduledProcessor(scheduled, tracked) || tracked;
-  }
-
-  // 📝 Step 6: Write updated tracking back to the card
-  keeperCard.description = JSON.stringify(tracked, null, 2);
-  log("Saved updated tracked map to keeperCard.description");
-
-  // 🔴 Step 7: Return matching cards
-  return matchingCards;
-}
-
-//Thanks lewdleah. Gets the current amount of turns.
-function getTurn() {
-    if (Number.isInteger(info?.actionCount)) {
-        return Math.abs(info.actionCount);
-    } else {
-        return 0;
-    }
 }
